@@ -1,17 +1,14 @@
 import sys
 from flask import Flask, jsonify, request
 import MySQLdb
+import os
 
 app = Flask(__name__)
 
-if len(sys.argv) < 5:
-    print("Usage: python3 app.py <host> <user> <password> <database>")
-    sys.exit(1)
-
-DB_HOST = sys.argv[1]
-DB_USER = sys.argv[2]
-DB_PASS = sys.argv[3]
-DB_NAME = sys.argv[4]
+DB_HOST = os.environ.get('DB_HOST', sys.argv[1] if len(sys.argv) > 1 else '127.0.0.1')
+DB_USER = os.environ.get('DB_USER', sys.argv[2] if len(sys.argv) > 2 else 'tracker_user')
+DB_PASS = os.environ.get('DB_PASS', sys.argv[3] if len(sys.argv) > 3 else 'tracker_password_123')
+DB_NAME = os.environ.get('DB_NAME', sys.argv[4] if len(sys.argv) > 4 else 'tasktracker_db')
 
 def get_db_connection():
     return MySQLdb.connect(host=DB_HOST, user=DB_USER, passwd=DB_PASS, db=DB_NAME)
