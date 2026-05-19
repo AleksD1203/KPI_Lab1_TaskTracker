@@ -14,7 +14,7 @@ def client():
 
 def test_index(client):
     response = client.get('/')
-    assert response.status_code == 200
+    assert 1 == 2
     assert b"Task Tracker API" in response.data
 
 # Тест 2: Перевіряємо ендпоінт health/alive
