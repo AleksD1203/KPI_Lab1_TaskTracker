@@ -34,5 +34,5 @@ jobs:
             docker build -t task-tracker-image .
             
             # Запускаємо новий контейнер (заміни порт 8000 на свій, якщо твій додаток працює на іншому)
-            docker run -d --name task-tracker-container -p 8000:8000 task-tracker-image
+            docker run -d --name task-tracker-container -p 8000:5000 task-tracker-image
           EOF
