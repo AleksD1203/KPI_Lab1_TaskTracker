@@ -1,2 +1,5 @@
 flask
 mysqlclient
+gunicorn
+pytest
+pytest-cov
