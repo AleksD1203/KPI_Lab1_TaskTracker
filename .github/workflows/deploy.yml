@@ -16,76 +16,31 @@ jobs:
 
       - name: Передача файлів на Target Node
         run: |
-          # Створюємо папку для проекту та копіюємо туди всі файли. 
-          # -o StrictHostKeyChecking=no ігнорує питання "yes/no" при підключенні.
           ssh -o StrictHostKeyChecking=no student@192.168.50.20 "mkdir -p ~/app-deploy"
-          scp -o StrictHostKeyChecking=no -r ./* student@192.168.50.20:~/app-deploy/
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no" --exclude='.git' --exclude='actions-runner' ./ student@192.168.50.20:~/app-deploy/
 
       - name: Збірка образу та налаштування Systemd + Nginx
         run: |
           ssh -o StrictHostKeyChecking=no student@192.168.50.20 << 'EOF'
-            cd ~/app-deploy
-            
-            # 1. Збираємо новий Docker-образ
-            docker build -t task-tracker-image .
-            
-            # 2. Створюємо системний systemd-юніт для керування контейнером
-            # Використовуємо інструмент 'tee' для запису у системну папку під sudo
-            sudo tee /etc/systemd/system/task-tracker.service << 'SYSTEMD'
-[Unit]
-Description=Task Tracker Docker Container
-After=docker.service
-Requires=docker.service
-
-[Service]
-TimeoutStartSec=0
-Restart=always
-ExecStartPre=-/usr/bin/docker stop task-tracker-container
-ExecStartPre=-/usr/bin/docker rm task-tracker-container
-# Запускаємо контейнер БЕЗ прапора -d, щоб systemd міг відстежувати його процес
-ExecStart=/usr/bin/docker run --name task-tracker-container -p 5000:5000 task-tracker-image
-ExecStop=/usr/bin/docker stop task-tracker-container
-
-[Install]
-WantedBy=multi-user.target
-SYSTEMD
-
-            # 3. Перезапускаємо конфігурацію systemd та вмикаємо сервіс
-            sudo systemctl daemon-reload
-            sudo systemctl enable task-tracker.service
-            sudo systemctl restart task-tracker.service
-            
-            # 4. Швидке налаштування Nginx як Reverse Proxy (вимога Лаби №1)
-            sudo apt-get install nginx -y
-            
-            sudo tee /etc/nginx/sites-available/task-tracker << 'NGINX'
-server {
-    listen 8000;
-    server_name _;
-
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-}
-NGINX
-
-            # Активуємо конфігурацію Nginx, якщо вона ще не активована
-            sudo ln -sf /etc/nginx/sites-available/task-tracker /etc/nginx/sites-enabled/
-            sudo rm -f /etc/nginx/sites-enabled/default
-            sudo systemctl restart nginx
+          cd ~/app-deploy
+          docker build -t task-tracker-image .
+          sudo cp task-tracker.service /etc/systemd/system/task-tracker.service
+          sudo systemctl daemon-reload
+          sudo systemctl enable task-tracker.service
+          sudo systemctl restart task-tracker.service
+          sudo apt-get update
+          sudo apt-get install nginx -y
+          sudo cp task-tracker.conf /etc/nginx/sites-available/task-tracker
+          sudo ln -sf /etc/nginx/sites-available/task-tracker /etc/nginx/sites-enabled/
+          sudo rm -f /etc/nginx/sites-enabled/default
+          sudo systemctl restart nginx
           EOF
+
       - name: Верифікація розгортання проекту
         run: |
           echo "Запуск процесу верифікації сервісу через Nginx..."
-          # Робимо запит до сайту на старій машині на порт 8000 через Nginx
-          # Флаг -s приховує прогрес-бар, -o /dev/null ігнорує тіло відповіді, -w повертає лише код статусу
           STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://192.168.50.20:8000/)
-          
           echo "Отримано HTTP статус-код: $STATUS_CODE"
-          
           if [ "$STATUS_CODE" -eq 200 ]; then
             echo "УСПІХ: Сервіс доступний, Nginx налаштований коректно (Код 200)!"
             exit 0
