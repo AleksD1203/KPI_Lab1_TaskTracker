@@ -32,7 +32,7 @@ jobs:
           sudo docker build -t task-tracker-image .
           
           # 3. Запускаємо контейнер (порт 8000 для відповідності верифікації)
-          sudo docker run -d -p 8000:9999 --name task-tracker-container task-tracker-image
+          sudo docker run -d -p 8000:5000 --name task-tracker-container task-tracker-image
           
           # 4. Налаштування Nginx
           sudo apt-get update && sudo apt-get install nginx -y
@@ -45,7 +45,7 @@ jobs:
       - name: Верифікація розгортання проекту
         run: |
           echo "Запуск процесу верифікації сервісу через Nginx..."
-          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://192.168.50.20:8000/)
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://192.168.50.20:9999/)
           echo "Отримано HTTP статус-код: $STATUS_CODE"
           if [ "$STATUS_CODE" -eq 200 ]; then
             echo "УСПІХ: Сервіс доступний, Nginx налаштований коректно (Код 200)!"
