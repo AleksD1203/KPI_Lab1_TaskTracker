@@ -17,7 +17,7 @@ jobs:
       - name: Передача файлів на Target Node
         run: |
           ssh -o StrictHostKeyChecking=no student@192.168.50.20 "mkdir -p ~/app-deploy"
-          scp -o StrictHostKeyChecking=no -r ./* student@192.168.50.20:~/app-deploy/
+          rsync -avz -e "ssh -o StrictHostKeyChecking=no" --exclude='.git' --exclude='actions-runner' ./ student@192.168.50.20:~/app-deploy/
 
       - name: Збірка образу та налаштування Systemd + Nginx
         run: |
