@@ -16,8 +16,6 @@ jobs:
 
       - name: Передача файлів на Target Node
         run: |
-          # Створюємо папку для проекту та копіюємо туди всі файли. 
-          # -o StrictHostKeyChecking=no ігнорує питання "yes/no" при підключенні.
           ssh -o StrictHostKeyChecking=no student@192.168.50.20 "mkdir -p ~/app-deploy"
           scp -o StrictHostKeyChecking=no -r ./* student@192.168.50.20:~/app-deploy/
 
@@ -30,7 +28,6 @@ jobs:
             docker build -t task-tracker-image .
             
             # 2. Створюємо системний systemd-юніт для керування контейнером
-            # Використовуємо інструмент 'tee' для запису у системну папку під sudo
             sudo tee /etc/systemd/system/task-tracker.service << 'SYSTEMD'
 [Unit]
 Description=Task Tracker Docker Container
@@ -42,7 +39,6 @@ TimeoutStartSec=0
 Restart=always
 ExecStartPre=-/usr/bin/docker stop task-tracker-container
 ExecStartPre=-/usr/bin/docker rm task-tracker-container
-# Запускаємо контейнер БЕЗ прапора -d, щоб systemd міг відстежувати його процес
 ExecStart=/usr/bin/docker run --name task-tracker-container -p 5000:5000 task-tracker-image
 ExecStop=/usr/bin/docker stop task-tracker-container
 
@@ -55,7 +51,7 @@ SYSTEMD
             sudo systemctl enable task-tracker.service
             sudo systemctl restart task-tracker.service
             
-            # 4. Швидке налаштування Nginx як Reverse Proxy (вимога Лаби №1)
+            # 4. Швидке налаштування Nginx як Reverse Proxy
             sudo apt-get install nginx -y
             
             sudo tee /etc/nginx/sites-available/task-tracker << 'NGINX'
@@ -72,20 +68,17 @@ server {
 }
 NGINX
 
-            # Активуємо конфігурацію Nginx, якщо вона ще не активована
+            # Активуємо конфігурацію Nginx
             sudo ln -sf /etc/nginx/sites-available/task-tracker /etc/nginx/sites-enabled/
             sudo rm -f /etc/nginx/sites-enabled/default
             sudo systemctl restart nginx
           EOF
+
       - name: Верифікація розгортання проекту
         run: |
           echo "Запуск процесу верифікації сервісу через Nginx..."
-          # Робимо запит до сайту на старій машині на порт 8000 через Nginx
-          # Флаг -s приховує прогрес-бар, -o /dev/null ігнорує тіло відповіді, -w повертає лише код статусу
           STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://192.168.50.20:8000/)
-          
           echo "Отримано HTTP статус-код: $STATUS_CODE"
-          
           if [ "$STATUS_CODE" -eq 200 ]; then
             echo "УСПІХ: Сервіс доступний, Nginx налаштований коректно (Код 200)!"
             exit 0
