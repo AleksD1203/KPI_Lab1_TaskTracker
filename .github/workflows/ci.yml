@@ -90,7 +90,7 @@ jobs:
           images: ghcr.io/${{ github.repository }}/web
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=sha,format=full,prefix=sha-
+            type=sha,format=long,prefix=sha-
             type=raw,value=stable,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
             type=ref,event=tag
 
