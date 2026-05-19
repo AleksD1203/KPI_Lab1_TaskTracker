@@ -19,17 +19,23 @@ jobs:
           ssh -o StrictHostKeyChecking=no student@192.168.50.20 "mkdir -p ~/app-deploy"
           rsync -avz -e "ssh -o StrictHostKeyChecking=no" --exclude='.git' --exclude='actions-runner' ./ student@192.168.50.20:~/app-deploy/
 
-      - name: Збірка образу та налаштування Systemd + Nginx
+      - name: Збірка образу та розгортання через Docker
         run: |
           ssh -o StrictHostKeyChecking=no student@192.168.50.20 << 'EOF'
           cd ~/app-deploy
-          docker build -t task-tracker-image .
-          sudo cp task-tracker.service /etc/systemd/system/task-tracker.service
-          sudo systemctl daemon-reload
-          sudo systemctl enable task-tracker.service
-          sudo systemctl restart task-tracker.service
-          sudo apt-get update
-          sudo apt-get install nginx -y
+          
+          # 1. Зупиняємо та видаляємо старий контейнер
+          sudo docker stop task-tracker-container || true
+          sudo docker rm task-tracker-container || true
+          
+          # 2. Збираємо образ
+          sudo docker build -t task-tracker-image .
+          
+          # 3. Запускаємо контейнер (порт 8000 для відповідності верифікації)
+          sudo docker run -d -p 8000:9999 --name task-tracker-container task-tracker-image
+          
+          # 4. Налаштування Nginx
+          sudo apt-get update && sudo apt-get install nginx -y
           sudo cp task-tracker.conf /etc/nginx/sites-available/task-tracker
           sudo ln -sf /etc/nginx/sites-available/task-tracker /etc/nginx/sites-enabled/
           sudo rm -f /etc/nginx/sites-enabled/default
